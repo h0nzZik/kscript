@@ -2,4 +2,5 @@
 
 set -e
 
-kprove --directory ks-kompiled ks-spec.k
+#DEBUG=--debug
+kprove $DEBUG --directory ks-kompiled ks-spec.k

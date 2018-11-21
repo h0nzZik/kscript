@@ -32,18 +32,27 @@ endmodule
 module KS-CORE
      imports KS-CORE-SYNTAX
 
+
+
      syntax Int ::= "Ks.TermList.length" "(" KsTermList ")" [function]
      rule Ks.TermList.length(.KsTermList) => 0
      rule Ks.TermList.length(_ XS) => 1 +Int Ks.TermList.length(XS)
 
-     syntax Int ::= "Ks.termArity" KsTerm [function]
-     rule Ks.termArity B:KsBasicValue => 0
-     rule Ks.termArity F:KsFunction => Ks.arity F
-     rule Ks.termArity ($ F XS) => (Ks.termArity F) -Int Ks.TermList.length(XS)
-     rule Ks.termArity (T |> F) => Ks.termArity ($ F T)
+     syntax Int ::= "Ks.termArity" "(" KsTerm ")" [function]
+     rule Ks.termArity(B:KsBasicValue) => 0
+     rule Ks.termArity(F:KsFunction) => Ks.arity F
+     rule Ks.termArity(($ F XS)) => Ks.termArity(F) -Int Ks.TermList.length(XS)
+     rule Ks.termArity((T |> F)) => Ks.termArity(($ F T))
+
+     syntax KsFunction ::= "Ks.compose" "(" KsTerm "," KsTerm ")"
+     rule Ks.apply Ks.compose(F, G) Args::KsTermList
+          => ($ G ($ F Args))
+          requires Ks.termArity(($ F Args)) ==Int 0
+
+     rule Ks.arity Ks.compose(F, G) => Ks.termArity(F) +Int Ks.termArity(G) -Int 1
 
      syntax Bool ::= "Ks.isValue" "(" KsTerm  ")" [function, klabel(Ks.isValue)]
-     rule Ks.isValue(($ Ts)) => ((Ks.termArity ($ Ts)) >=Int 1)
+     rule Ks.isValue(($ Ts)) => Ks.termArity(($ Ts)) >=Int 1
      rule Ks.isValue(V:KsValue) => true
      rule Ks.isValue(_) => false [owise]
 
@@ -61,11 +70,11 @@ module KS-CORE
      rule Ks.apply V:KsBasicValue => V
 
      rule ($ ($ F Xs ) Y Ys) => ($ ($ F Ks.TermList.from(List.fromKsTermList(Xs) ListItem(Y))) Ys)
-          requires (Ks.termArity ($ F Xs)) >=Int 1
+          requires Ks.termArity(($ F Xs)) >=Int 1
 
      rule ($ F::KsTerm Args::KsTermList) => Ks._apply.eval(F Args)
-          requires ((notBool isKsFunction(F)) andBool ((Ks.termArity F) ==Int 0))
-                    orBool (isKsFunction(F) andBool ((Ks.termArity ($ F Args)) ==Int 0))
+          requires ((notBool isKsFunction(F)) andBool (Ks.termArity(F) ==Int 0))
+                    orBool (isKsFunction(F) andBool (Ks.termArity(($ F Args)) ==Int 0))
 
      syntax KItem ::= "Ks._apply.eval" "(" KsTermList ")"
      rule Ks._apply.eval(Xs) => Ks._apply._eval(List.fromKsTermList(Xs), .List)
@@ -87,9 +96,11 @@ endmodule
 module KS-PRELUDE-SORTS
      imports INT
      imports BOOL
+     imports KAST
 
      syntax KsList
-     syntax KsBasicValue ::= Int | Bool | KsList
+     syntax KsUnit
+     syntax KsBasicValue ::= Int | Bool | KsList | KsUnit
 
      syntax KsNullaryFunction
      syntax KsUnaryFunction
@@ -108,18 +119,22 @@ module KS-PRELUDE-SYNTAX
      imports INT
      imports BOOL
 
-     syntax KsBasicValue ::= "Ks.unit"
+     syntax KsUnit ::= "Ks.unit"
 
-     // A -> A
+     // a -> a
      syntax KsUnaryFunction ::= "Ks.id"
-     // A -> List A -> List A
-     syntax KsBinaryFunction ::= "List.cons"
-     // Bool -> A -> List A -> List A
-     syntax KsTernaryFunction ::= "List.cons?"
-     // (A -> B) -> List A -> List B
-     syntax KsBinaryFunction ::= "List.map"
-     // (A -> Bool) -> List A -> List A
-     syntax KsBinaryFunction ::= "List.filter"
+     // a -> KsList a -> KsList a
+     syntax KsBinaryFunction ::= "Ks.List.cons"
+     // Bool -> a -> KsList a -> KsList a
+     syntax KsTernaryFunction ::= "Ks.List.cons?"
+     // (a -> b) -> KsList a -> KsList b
+     syntax KsBinaryFunction ::= "Ks.List.map"
+     // (a -> Bool) -> KsList a -> KsList a
+     syntax KsBinaryFunction ::= "Ks.List.filter"
+     // (a -> KsUnit) -> KsList a -> KsUnit
+     syntax KsBinaryFunction ::= "Ks.each"
+
+     syntax KsUnaryFunction ::= "Ks.fromKLabel" "(" KItem ")"
 
      syntax KsList ::= "{}" [klabel(Ks.List.nil)]
                      | "(" KsTerm ":" KsList ")"
@@ -154,6 +169,8 @@ module KS-PRELUDE-BASIC
      rule List.from({}::KsList) => .List
      rule List.from((X : Xs)) => ListItem(X) List.from(Xs)
 
+     rule Ks.apply Ks.fromKLabel(#klabel(Lbl:KLabel)) X:KsTerm .KsTermList => Lbl(X, .KList)
+
 endmodule
 
 module KS-PRELUDE-ID
@@ -165,31 +182,45 @@ endmodule
 module KS-PRELUDE-CONS
      imports KS-PRELUDE-BASE
 
-     rule Ks.apply List.cons V Vs::KsList => (V : Vs)
+     rule Ks.apply Ks.List.cons V Vs::KsList => (V : Vs)
 
-     rule Ks.apply List.cons? true::Bool V::KsTerm Vs::KsList => (V : Vs)
-     rule Ks.apply List.cons? false::Bool V::KsTerm Vs::KsList => Vs
+     rule Ks.apply Ks.List.cons? true::Bool V::KsTerm Vs::KsList => (V : Vs)
+     rule Ks.apply Ks.List.cons? false::Bool V::KsTerm Vs::KsList => Vs
 
 endmodule
 
 module KS-PRELUDE-MAP
      imports KS-PRELUDE-BASE
 
-     rule Ks.apply List.map F {}
+     rule Ks.apply Ks.List.map F {}
           => {}
 
-     rule Ks.apply List.map F (X : Xs::KsList)
-          => ($ List.cons ($ F X) ($ List.map F Xs))
+     rule Ks.apply Ks.List.map F (X : Xs::KsList)
+          => ($ Ks.List.cons ($ F X) ($ Ks.List.map F Xs))
 endmodule
 
 module KS-PRELUDE-FILTER
      imports KS-PRELUDE-BASE
 
-     rule Ks.apply List.filter F {}
+     rule Ks.apply Ks.List.filter F {}
           => {}
 
-     rule Ks.apply List.filter P (X : Xs::KsList)
-          => ($ List.cons? ($ P X) X ($ List.filter P Xs))
+     rule Ks.apply Ks.List.filter P (X : Xs::KsList)
+          => ($ Ks.List.cons? ($ P X) X ($ Ks.List.filter P Xs))
+endmodule
+
+module KS-PRELUDE-EACH
+     imports KS-PRELUDE-BASE
+
+     rule Ks.apply Ks.each F {} => Ks.unit
+     rule Ks.apply Ks.each F (X : Xs::KsList)
+          => ($ F X)
+          ~> Ks.discard
+          ~> ($ Ks.each F Xs)
+
+     syntax KItem ::= "Ks.discard"
+     rule _ ~> Ks.discard => .K
+
 endmodule
 
 module KS-PRELUDE
@@ -198,6 +229,7 @@ module KS-PRELUDE
      imports KS-PRELUDE-CONS
      imports KS-PRELUDE-MAP
      imports KS-PRELUDE-FILTER
+     imports KS-PRELUDE-EACH
 endmodule
 
 module KS-SORTS
