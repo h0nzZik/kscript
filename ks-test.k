@@ -32,7 +32,7 @@ module KS-TEST-MAIN
           <acc> Y::Int => X *Int Y </acc>
 
      syntax KsFunction ::= "isOdd"
-     rule isOdd => Ks.compose(($ plus 1), isEven) [anywhere]
+     rule isOdd => Ks.compose($(plus 1), isEven) [anywhere]
 
      syntax Int ::= twice(Int) [function]
      rule twice(X) => 2 *Int X
