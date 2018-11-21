@@ -21,14 +21,14 @@ module KS-SPEC
      rule <k> Ks.isValue(($ Ks.id Ks.unit)) => false </k> [specification]
 
 
-     rule <k> ($ List.cons 0 {}) => (0 : {}) </k> [specification]
-     rule <k> ($ List.cons 0 (1 : {})) => (0 : (1 : {})) </k> [specification]
-     rule <k> ($ List.cons 0 (1 : (2 : {}))) => (0 : (1 : (2 : {}))) </k> [specification]
+     rule <k> ($ List.cons 0 {}) => [[0]] </k> [specification]
+     rule <k> ($ List.cons 0 [[1]]) => [[0,1]] </k> [specification]
+     rule <k> ($ List.cons 0 [[1,2]]) => [[0,1,2]] </k> [specification]
 
-     rule <k> ($ List.cons ($ Ks.id 0) {}) => (0 : {}) </k> [specification]
+     rule <k> ($ List.cons ($ Ks.id 0) {}) => [[0]] </k> [specification]
 
-     rule <k> ($ List.cons 0 ($ Ks.id {})) => (0 : {}) </k> [specification]
-     rule <k> ($ List.cons ($ Ks.id 0) ($ Ks.id {})) => (0 : {}) </k> [specification]
+     rule <k> ($ List.cons 0 ($ Ks.id {})) => [[0]] </k> [specification]
+     rule <k> ($ List.cons ($ Ks.id 0) ($ Ks.id {})) => [[0]] </k> [specification]
 
      rule <k> ($ Ks.id Ks.id) => Ks.id </k> [specification]
      rule <k> ($ ($ Ks.id Ks.id) Ks.unit) => Ks.unit </k> [specification]
@@ -43,15 +43,15 @@ module KS-SPEC
 
      rule <k> {} |> ($ List.map Ks.id) => {} </k> [specification]
 
-     rule <k> (1 : (2 : (3 : {}))) |> ($ List.map Ks.id) => (1 : (2 : (3 : {}))) </k> [specification]
+     rule <k> [[1,2,3]] |> ($ List.map Ks.id) => [[1,2,3]] </k> [specification]
 
      rule <k> {} |> ($ List.map ($ plus 3)) => {} </k> [specification]
 
 
-     rule <k> ($ List.cons? ($ Ks.id true) 1 (2 : {}) ) => (1 : (2 : {})) </k> [specification]
-     rule <k> ($ List.cons? ($ Ks.id false) 1 (2 : {}) ) => (2 : {}) </k> [specification]
+     rule <k> ($ List.cons? ($ Ks.id true) 1 [[2]]) => [[1,2]] </k> [specification]
+     rule <k> ($ List.cons? ($ Ks.id false) 1 [[2]]) => [[2]] </k> [specification]
 
-     rule <k> (1 : (2 : (3 : (4 : {})))) |> ($ List.filter isEven) => (2 : (4 : {})) </k> [specification]
+     rule <k> [[1,2,3,4]] |> ($ List.filter isEven) => [[2,4]] </k> [specification]
 
      rule <k> [[1,2,3,4]]
            |> ($ List.filter isEven)
@@ -79,16 +79,14 @@ module KS-SPEC
           </k>
           [specification]
 
-/*     
-     rule <k> Range(ListItem(1) ListItem(2))
-           |> Range.toSequence
-           => 1 ~> 2
+     rule <k> Ks.List.from(List.from([[1,2,3]]))
+           => [[1,2,3]]
           </k>
           [specification]
 
-     rule <k> ListItem(1) ListItem(2)
-              ~> Range.fromList
-              => Range(ListItem(1) ListItem(2))
+     rule <k> List.from(Ks.List.from(ListItem(1) ListItem(2) ListItem(3)))
+           => ListItem(1) ListItem(2) ListItem(3)
           </k>
-*/
+          [specification]
+
 endmodule
