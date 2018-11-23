@@ -1,11 +1,18 @@
 require "ks.k"
 
+module KS-TEST-MAIN-SYNTAX
+     imports KS-SYNTAX
+
+     syntax KsFunction ::= "plus"
+endmodule
+
 module KS-TEST-MAIN
+     imports KS-TEST-MAIN-SYNTAX // self
+
      imports BOOL
      imports INT
      imports KS
 
-     syntax KsFunction ::= "plus"
      rule Ks.arity plus => 2
      rule Ks.apply plus X::Int Y::Int => X +Int Y
 
@@ -18,7 +25,7 @@ module KS-TEST-MAIN
      rule Ks.apply isEven X::Int => (X %Int 2) ==Int 0
 
      configuration
-          <k> .K </k>
+          <k> $PGM:K </k>
           <acc> 0 </acc>
 
      // Int -> Unit
